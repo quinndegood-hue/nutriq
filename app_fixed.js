@@ -234,7 +234,7 @@ function renderDash() {
     totPro < S.goals.pro*0.4 ? `Protein is only at ${totPro}g — you need ${S.goals.pro-totPro}g more today. Add eggs, chicken, Greek yogurt, or a protein shake.` :
     remCal > 600 ? `You have ${remCal} calories left. A balanced meal with lean protein and veggies would hit your targets perfectly.` :
     S.water < 4 ? `Only ${S.water} cup${S.water!==1?'s':''} of water today — try to reach 8. Hydration directly affects energy and metabolism.` :
-    `Great work today! ${totPro}g protein and ${netCal} calories. You're ${Math.round(totPro/S.goals.pro*100)}% of the way to your protein goal.`
+    `Great work today! ${totPro}g protein and ${netCal} calories. You are ${Math.round(totPro/S.goals.pro*100)}% of the way to your protein goal.`
   ];
   document.getElementById('ai-tip-text').textContent = tips[0];
 
@@ -244,7 +244,7 @@ function renderDash() {
     const msgs = [
       `${S.goals.pro-totPro}g protein left today — Greek yogurt or cottage cheese would close the gap fast.`,
       `${remCal} cal remaining — a chicken and rice bowl would hit both your calorie and protein goals.`,
-      `You're killing it today! One more high-protein snack and you'll nail all your goals.`
+      `You are killing it today! One more high-protein snack and you will nail all your goals.`
     ];
     document.getElementById('smart-text').textContent = msgs[S.foods.length%msgs.length];
   } else {
@@ -304,101 +304,113 @@ function editFood(id) {
 }
 
 // =============================================
-// SCAN FOOD
-// =============================================
-// =============================================
 // OPEN FOOD FACTS SEARCH — 100% FREE
 // =============================================
+var _offProducts = [];
+var pendingOFFProduct = null;
+
 async function searchOFF(query) {
-  const status = document.getElementById('scan-status');
-  const result = document.getElementById('scan-result');
+  var status = document.getElementById('scan-status');
+  var result = document.getElementById('scan-result');
   if (!query) return;
   status.innerHTML = '<span class="spin"></span> Searching food database...';
   result.innerHTML = '';
   try {
-    const r = await fetch('https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(query)+'&search_simple=1&action=process&json=1&page_size=6&fields=product_name,nutriments,image_small_url,brands');
-    const d = await r.json();
-    const products = (d.products||[]).filter(p=>p.product_name&&p.nutriments);
-    if (products.length === 0) { status.textContent = 'No results — try a different name or use manual entry below.'; return; }
-    status.textContent = products.length + ' foods found — pick one:';
-    result.innerHTML = products.map((p,i) => {
-      const n = p.nutriments;
-      const cal = Math.round(n['energy-kcal_100g']||n['energy-kcal']||(n['energy_100g']||0)/4.184)||0;
-      const pro = Math.round(n.proteins_100g||0);
-      const carb = Math.round(n.carbohydrates_100g||0);
-      const fat = Math.round(n.fat_100g||0);
-      const name = (p.product_name + (p.brands ? ' ('+p.brands.split(',')[0]+')' : '')).replace(/'/g,"&#39;");
-      const img = p.image_small_url
-        ? `<img src="${p.image_small_url}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display='none'">`
-        : `<div style="width:50px;height:50px;background:var(--surface3);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px">🍽️</div>`;
-      return `<div class="scan-result-wrap" style="margin-bottom:10px;cursor:pointer" onclick="selectOFFProduct('${name}',${cal},${pro},${carb},${fat})">
-        <div style="display:flex;align-items:center;gap:12px">
-          ${img}
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.product_name}${p.brands?' ('+p.brands.split(',')[0]+')':''}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:3px">per 100g — ${cal} kcal · ${pro}g protein · ${carb}g carbs · ${fat}g fat</div>
-          </div>
-          <div style="font-family:"Bebas Neue",sans-serif;font-size:20px;color:var(--g);flex-shrink:0">${cal}<span style="font-size:11px;font-family:"DM Sans",sans-serif;color:var(--text3)"> kcal</span></div>
-        </div>
-      </div>`;
+    var url = 'https://world.openfoodfacts.org/cgi/search.pl?search_terms=' + encodeURIComponent(query) + '&search_simple=1&action=process&json=1&page_size=6&fields=product_name,nutriments,image_small_url,brands';
+    var r = await fetch(url);
+    var d = await r.json();
+    _offProducts = (d.products||[]).filter(function(p){ return p.product_name && p.nutriments; });
+    if (_offProducts.length === 0) { status.textContent = 'No results — try a different name.'; return; }
+    status.textContent = _offProducts.length + ' foods found — pick one:';
+    var html = _offProducts.map(function(p, i) {
+      var n = p.nutriments;
+      var cal = Math.round(n['energy-kcal_100g'] || n['energy-kcal'] || (n['energy_100g']||0)/4.184) || 0;
+      var pro = Math.round(n.proteins_100g || 0);
+      var carb = Math.round(n.carbohydrates_100g || 0);
+      var fat = Math.round(n.fat_100g || 0);
+      var imgHtml = p.image_small_url
+        ? '<img src="' + p.image_small_url + '" style="width:50px;height:50px;object-fit:cover;border-radius:8px">'
+        : '<div style="width:50px;height:50px;background:var(--surface3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px">🍽️</div>';
+      return '<div class="scan-result-wrap" style="margin-bottom:10px;cursor:pointer" onclick="pickOFF(' + i + ')">'
+        + '<div style="display:flex;align-items:center;gap:12px">'
+        + imgHtml
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + p.product_name + (p.brands ? ' (' + p.brands.split(',')[0] + ')' : '') + '</div>'
+        + '<div style="font-size:11px;color:var(--text3);margin-top:3px">per 100g: ' + cal + ' kcal, ' + pro + 'g protein, ' + carb + 'g carbs, ' + fat + 'g fat</div>'
+        + '</div>'
+        + '<div style="font-size:18px;font-weight:700;color:var(--g);flex-shrink:0">' + cal + '<span style="font-size:10px;color:var(--text3)"> kcal</span></div>'
+        + '</div></div>';
     }).join('');
+    result.innerHTML = html;
     unlock('scan');
   } catch(e) {
-    status.textContent = 'Search failed — check connection or use manual entry below.';
+    status.textContent = 'Search failed — check connection or use manual entry.';
   }
 }
 
-function selectOFFProduct(name, cal, pro, carb, fat) {
+function pickOFF(i) {
+  var p = _offProducts[i];
+  if (!p) return;
+  var n = p.nutriments;
+  var cal = Math.round(n['energy-kcal_100g'] || n['energy-kcal'] || (n['energy_100g']||0)/4.184) || 0;
+  var pro = Math.round(n.proteins_100g || 0);
+  var carb = Math.round(n.carbohydrates_100g || 0);
+  var fat = Math.round(n.fat_100g || 0);
+  var name = p.product_name + (p.brands ? ' (' + p.brands.split(',')[0] + ')' : '');
+  pendingOFFProduct = {name:name, cal:cal, pro:pro, carb:carb, fat:fat};
   document.getElementById('scan-status').textContent = '';
   document.getElementById('scan-result').innerHTML = '<div class="scan-result-wrap">'
-    +`<div style="font-family:"Bebas Neue",sans-serif;font-size:18px;color:var(--text);margin-bottom:12px">${name}</div>`
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">✏️ Adjust amounts for your portion (shown per 100g)</div>'
-    +'<div class="g4" style="margin-bottom:12px">'
-    +'<div class="editable-tile"><div class="tile-label">Calories</div><input type="number" id="e-cal" value="'+cal+'" min="0"></div>'
-    +'<div class="editable-tile"><div class="tile-label">Protein g</div><input type="number" id="e-pro" value="'+pro+'" min="0"></div>'
-    +'<div class="editable-tile"><div class="tile-label">Carbs g</div><input type="number" id="e-carb" value="'+carb+'" min="0"></div>'
-    +'<div class="editable-tile"><div class="tile-label">Fat g</div><input type="number" id="e-fat" value="'+fat+'" min="0"></div>'
-    +'</div>'
-    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-    +'<select id="e-meal" style="width:auto;padding:8px 10px;font-size:12px"><option>Breakfast</option><option selected>Lunch</option><option>Dinner</option><option>Snack</option></select>'
-    +'<button class="btn g" onclick="addScanned(''+name.replace(/'/g,"\'")+'')" >+ Add to log</button>'
-    +'<button class="btn ghost" onclick="document.getElementById('scan-result').innerHTML='';document.getElementById('scan-status').textContent=''">Back</button>'
-    +'</div></div>';
+    + '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px">' + name + '</div>'
+    + '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Adjust for your portion size (values per 100g)</div>'
+    + '<div class="g4" style="margin-bottom:12px">'
+    + '<div class="editable-tile"><div class="tile-label">Calories</div><input type="number" id="e-cal" value="' + cal + '" min="0"></div>'
+    + '<div class="editable-tile"><div class="tile-label">Protein g</div><input type="number" id="e-pro" value="' + pro + '" min="0"></div>'
+    + '<div class="editable-tile"><div class="tile-label">Carbs g</div><input type="number" id="e-carb" value="' + carb + '" min="0"></div>'
+    + '<div class="editable-tile"><div class="tile-label">Fat g</div><input type="number" id="e-fat" value="' + fat + '" min="0"></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + '<select id="e-meal" style="width:auto;padding:8px 10px;font-size:12px">'
+    + '<option>Breakfast</option><option selected>Lunch</option><option>Dinner</option><option>Snack</option>'
+    + '</select>'
+    + '<button class="btn g" onclick="addScannedPending()">+ Add to log</button>'
+    + '<button class="btn ghost" onclick="document.getElementById("scan-result").innerHTML="";document.getElementById("scan-status").textContent=""">Back</button>'
+    + '</div></div>';
+}
+
+function addScannedPending() {
+  if (!pendingOFFProduct) return;
+  var cal = parseInt(document.getElementById('e-cal').value) || pendingOFFProduct.cal;
+  var pro = parseInt(document.getElementById('e-pro').value) || pendingOFFProduct.pro;
+  var carb = parseInt(document.getElementById('e-carb').value) || pendingOFFProduct.carb;
+  var fat = parseInt(document.getElementById('e-fat').value) || pendingOFFProduct.fat;
+  var meal = document.getElementById('e-meal').value;
+  addFood({name:pendingOFFProduct.name, cal:cal, pro:pro, carb:carb, fat:fat, meal:meal});
+  toast('Added ' + pendingOFFProduct.name + '!');
+  pendingOFFProduct = null;
+  document.getElementById('scan-result').innerHTML = '';
+  document.getElementById('scan-preview').style.display = 'none';
+  document.getElementById('scan-status').textContent = '';
+  go(nav('log'), 'log', 'My Log');
 }
 
 function doScan(input) {
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
+  var file = input.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
     document.getElementById('scan-preview').src = e.target.result;
     document.getElementById('scan-preview').style.display = 'block';
-    document.getElementById('scan-result').innerHTML = '<div class="scan-result-wrap">'
-      +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">Photo taken! Search for this food:</div>'
-      +'<div style="display:flex;gap:8px">'
-      +'<input type="text" id="photo-food-name" placeholder="e.g. Greek yogurt, chicken breast..." onkeydown="if(event.key==='Enter')searchOFF(this.value)">'
-      +'<button class="btn g" onclick="searchOFF(document.getElementById('photo-food-name').value)" style="flex:none">Search</button>'
-      +'</div></div>';
     document.getElementById('scan-status').textContent = '';
-    setTimeout(()=>{const el=document.getElementById('photo-food-name');if(el)el.focus();},100);
+    document.getElementById('scan-result').innerHTML = '<div class="scan-result-wrap">'
+      + '<div style="font-size:13px;font-weight:600;margin-bottom:8px">Photo taken! Search for this food:</div>'
+      + '<div style="display:flex;gap:8px">'
+      + '<input type="text" id="photo-food-name" placeholder="e.g. Greek yogurt, chicken breast...">'
+      + '<button class="btn g" onclick="searchOFF(document.getElementById("photo-food-name").value)" style="flex:none">Search</button>'
+      + '</div></div>';
+    setTimeout(function(){ var el = document.getElementById('photo-food-name'); if(el) el.focus(); }, 100);
   };
-  reader.readAsDataURL(file); input.value='';
+  reader.readAsDataURL(file);
+  input.value = '';
 }
-
-
-function addScanned(name) {
-  const cal = parseInt(document.getElementById('e-cal').value)||0;
-  const pro = parseInt(document.getElementById('e-pro').value)||0;
-  const carb = parseInt(document.getElementById('e-carb').value)||0;
-  const fat = parseInt(document.getElementById('e-fat').value)||0;
-  const meal = document.getElementById('e-meal').value;
-  addFood({name,cal,pro,carb,fat,meal});
-  document.getElementById('scan-result').innerHTML='';
-  document.getElementById('scan-preview').style.display='none';
-  document.getElementById('scan-status').textContent='';
-  toast('✅ '+name+' added to log!');
-  go(nav('log'),'log','My Log');
-}
-
 function addManual() {
   const n = document.getElementById('mn').value.trim(); if(!n) return;
   const cal = parseInt(document.getElementById('mc').value)||0;
@@ -457,7 +469,7 @@ async function parseVoiceText(text) {
       <div style="font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.5">You said: <em style="color:var(--text)">"${text}"</em><br>Search each food below to add it:</div>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input type="text" id="voice-search-in" placeholder="Type a food from your meal..." value="${text}" onkeydown="if(event.key==='Enter'){searchOFF(this.value);document.getElementById('voice-search-results').style.display='block'}">
-        <button class="btn g" style="flex:none" onclick="searchOFF(document.getElementById('voice-search-in').value);document.getElementById('voice-search-results').style.display='block'">Search</button>
+        <button class="btn g" style="flex:none" onclick="searchOFF(document.getElementById("voice-search-in").value);document.getElementById("voice-search-results").style.display='block'">Search</button>
       </div>
       <div id="voice-search-results" style="display:none">
         <div id="scan-status"></div>
@@ -530,7 +542,7 @@ function processFridgeIngredients() {
       <div style="display:flex;gap:8px;margin-bottom:10px"><span class="badge g">${m.cal} kcal</span><span class="badge blue">${m.pro}g protein</span><span class="badge yellow">${m.carb}g carbs</span></div>
       <div class="btn-row">
         <button class="btn g sm" onclick="addFood({name:'${m.name}',cal:${m.cal},pro:${m.pro},carb:${m.carb},fat:${m.fat},meal:'Dinner'});toast('${m.name} added to dinner!');go(nav('log'),'log','My Log')">+ Add to log</button>
-        <button class="btn sm ghost" onclick="document.getElementById('rec-ings').value='${ings.replace(/'/g,"\'")}';go(nav('recipe'),'recipe','Recipe Builder');toast('Ingredients loaded into recipe builder!')">Build recipe →</button>
+        <button class="btn sm ghost" onclick="document.getElementById("rec-ings").value='${ings.replace(/'/g,"\'")}';go(nav('recipe'),'recipe','Recipe Builder');toast('Ingredients loaded into recipe builder!')">Build recipe →</button>
       </div>
     </div>`).join('')}`;
 }
@@ -606,67 +618,14 @@ function buildRecipe(){
   const lc=(ings+' '+goal).toLowerCase();
 
   const RECIPES = [
-    {name:'High Protein Chicken Bowl',goal:'muscle',tags:['chicken','protein'],cal:580,pro:52,carb:48,fat:14,steps:'1. Season chicken breast with salt, pepper, garlic powder.
-2. Cook in a pan with olive oil for 6-7 min each side.
-3. Cook 1 cup brown rice per package directions.
-4. Steam broccoli for 5 minutes.
-5. Slice chicken and serve over rice with broccoli.
-6. Drizzle with soy sauce or hot sauce.
-
-Nutrition per serving: 580 kcal · 52g protein · 48g carbs · 14g fat'},
-    {name:'Egg & Veggie Omelette',goal:'any',tags:['egg','breakfast'],cal:320,pro:24,carb:8,fat:20,steps:'1. Whisk 3 large eggs with a pinch of salt and pepper.
-2. Heat a non-stick pan over medium heat with butter.
-3. Pour in eggs, let set for 30 seconds.
-4. Add diced vegetables and cheese on one half.
-5. Fold omelette and cook 1 more minute.
-6. Serve immediately.
-
-Nutrition per serving: 320 kcal · 24g protein · 8g carbs · 20g fat'},
-    {name:'Greek Yogurt Parfait',goal:'any',tags:['yogurt','breakfast','snack'],cal:280,pro:22,carb:34,fat:4,steps:'1. Layer 1 cup Greek yogurt in a bowl or glass.
-2. Add 1/2 cup mixed berries or sliced banana.
-3. Top with 2 tbsp granola or oats.
-4. Drizzle with 1 tsp honey if desired.
-5. Eat immediately or refrigerate up to 2 hours.
-
-Nutrition per serving: 280 kcal · 22g protein · 34g carbs · 4g fat'},
-    {name:'Tuna Pasta Salad',goal:'any',tags:['tuna','pasta'],cal:490,pro:38,carb:52,fat:12,steps:'1. Cook 2 cups pasta until al dente, drain and cool.
-2. Drain 2 cans tuna and flake with a fork.
-3. Mix pasta, tuna, 2 tbsp mayo, diced celery, red onion.
-4. Season with salt, pepper, lemon juice.
-5. Refrigerate 30 min before serving.
-
-Nutrition per serving: 490 kcal · 38g protein · 52g carbs · 12g fat'},
-    {name:'Protein Stir Fry',goal:'muscle',tags:['rice','broccoli','stir','protein'],cal:520,pro:42,carb:54,fat:14,steps:'1. Cook rice and set aside.
-2. Heat oil in a wok or large pan over high heat.
-3. Add diced chicken or beef, cook 5-6 min.
-4. Add broccoli, peppers, and any other veg.
-5. Add 2 tbsp soy sauce, 1 tsp sesame oil, garlic.
-6. Toss and serve over rice.
-
-Nutrition per serving: 520 kcal · 42g protein · 54g carbs · 14g fat'},
-    {name:'Overnight Oats',goal:'any',tags:['oat','breakfast'],cal:380,pro:16,carb:58,fat:9,steps:'1. Combine 1/2 cup oats and 1/2 cup milk in a jar.
-2. Add 1/2 cup Greek yogurt, 1 tbsp chia seeds.
-3. Sweeten with honey or maple syrup.
-4. Add your choice of fruit on top.
-5. Cover and refrigerate overnight.
-6. Eat cold straight from the jar.
-
-Nutrition per serving: 380 kcal · 16g protein · 58g carbs · 9g fat'},
-    {name:'Salmon & Vegetables',goal:'any',tags:['salmon','fish'],cal:440,pro:40,carb:18,fat:22,steps:'1. Preheat oven to 400°F (200°C).
-2. Place salmon fillet on a baking sheet.
-3. Season with olive oil, lemon, salt, pepper, dill.
-4. Add asparagus or broccoli alongside.
-5. Bake 12-15 minutes until salmon flakes easily.
-6. Serve immediately with lemon wedges.
-
-Nutrition per serving: 440 kcal · 40g protein · 18g carbs · 22g fat'},
-    {name:'Black Bean Burrito Bowl',goal:'any',tags:['bean','rice','vegetarian','vegan'],cal:460,pro:18,carb:72,fat:10,steps:'1. Cook rice and warm black beans separately.
-2. Layer rice in a bowl, top with beans.
-3. Add salsa, diced avocado, shredded cheese.
-4. Top with lime juice, cilantro, sour cream.
-5. Add hot sauce if desired.
-
-Nutrition per serving: 460 kcal · 18g protein · 72g carbs · 10g fat'},
+    {name:'High Protein Chicken Bowl',goal:'muscle',tags:['chicken','protein'],cal:580,pro:52,carb:48,fat:14,steps:'1. Season chicken breast with salt, pepper, garlic powder. 2. Cook in a pan with olive oil for 6-7 min each side. 3. Cook 1 cup brown rice per package directions. 4. Steam broccoli for 5 minutes. 5. Slice chicken and serve over rice with broccoli. 6. Drizzle with soy sauce or hot sauce.  Nutrition per serving: 580 kcal · 52g protein · 48g carbs · 14g fat'},
+    {name:'Egg & Veggie Omelette',goal:'any',tags:['egg','breakfast'],cal:320,pro:24,carb:8,fat:20,steps:'1. Whisk 3 large eggs with a pinch of salt and pepper. 2. Heat a non-stick pan over medium heat with butter. 3. Pour in eggs, let set for 30 seconds. 4. Add diced vegetables and cheese on one half. 5. Fold omelette and cook 1 more minute. 6. Serve immediately.  Nutrition per serving: 320 kcal · 24g protein · 8g carbs · 20g fat'},
+    {name:'Greek Yogurt Parfait',goal:'any',tags:['yogurt','breakfast','snack'],cal:280,pro:22,carb:34,fat:4,steps:'1. Layer 1 cup Greek yogurt in a bowl or glass. 2. Add 1/2 cup mixed berries or sliced banana. 3. Top with 2 tbsp granola or oats. 4. Drizzle with 1 tsp honey if desired. 5. Eat immediately or refrigerate up to 2 hours.  Nutrition per serving: 280 kcal · 22g protein · 34g carbs · 4g fat'},
+    {name:'Tuna Pasta Salad',goal:'any',tags:['tuna','pasta'],cal:490,pro:38,carb:52,fat:12,steps:'1. Cook 2 cups pasta until al dente, drain and cool. 2. Drain 2 cans tuna and flake with a fork. 3. Mix pasta, tuna, 2 tbsp mayo, diced celery, red onion. 4. Season with salt, pepper, lemon juice. 5. Refrigerate 30 min before serving.  Nutrition per serving: 490 kcal · 38g protein · 52g carbs · 12g fat'},
+    {name:'Protein Stir Fry',goal:'muscle',tags:['rice','broccoli','stir','protein'],cal:520,pro:42,carb:54,fat:14,steps:'1. Cook rice and set aside. 2. Heat oil in a wok or large pan over high heat. 3. Add diced chicken or beef, cook 5-6 min. 4. Add broccoli, peppers, and any other veg. 5. Add 2 tbsp soy sauce, 1 tsp sesame oil, garlic. 6. Toss and serve over rice.  Nutrition per serving: 520 kcal · 42g protein · 54g carbs · 14g fat'},
+    {name:'Overnight Oats',goal:'any',tags:['oat','breakfast'],cal:380,pro:16,carb:58,fat:9,steps:'1. Combine 1/2 cup oats and 1/2 cup milk in a jar. 2. Add 1/2 cup Greek yogurt, 1 tbsp chia seeds. 3. Sweeten with honey or maple syrup. 4. Add your choice of fruit on top. 5. Cover and refrigerate overnight. 6. Eat cold straight from the jar.  Nutrition per serving: 380 kcal · 16g protein · 58g carbs · 9g fat'},
+    {name:'Salmon & Vegetables',goal:'any',tags:['salmon','fish'],cal:440,pro:40,carb:18,fat:22,steps:'1. Preheat oven to 400°F (200°C). 2. Place salmon fillet on a baking sheet. 3. Season with olive oil, lemon, salt, pepper, dill. 4. Add asparagus or broccoli alongside. 5. Bake 12-15 minutes until salmon flakes easily. 6. Serve immediately with lemon wedges.  Nutrition per serving: 440 kcal · 40g protein · 18g carbs · 22g fat'},
+    {name:'Black Bean Burrito Bowl',goal:'any',tags:['bean','rice','vegetarian','vegan'],cal:460,pro:18,carb:72,fat:10,steps:'1. Cook rice and warm black beans separately. 2. Layer rice in a bowl, top with beans. 3. Add salsa, diced avocado, shredded cheese. 4. Top with lime juice, cilantro, sour cream. 5. Add hot sauce if desired.  Nutrition per serving: 460 kcal · 18g protein · 72g carbs · 10g fat'},
   ];
 
   const matches = RECIPES.filter(r =>
@@ -685,8 +644,19 @@ Nutrition per serving: 460 kcal · 18g protein · 72g carbs · 10g fat'},
     +'<span class="badge orange">'+recipe.fat+'g fat</span>'
     +'</div>'
     +'<div style="font-size:13px;line-height:1.75;white-space:pre-wrap;color:var(--text2)">'+recipe.steps+'</div>'
-    +'<div class="btn-row"><button class="btn g" onclick="addFood({name:''+recipe.name+'',cal:'+recipe.cal+',pro:'+recipe.pro+',carb:'+recipe.carb+',fat:'+recipe.fat+',meal:'Dinner'});toast(''+recipe.name+' added to dinner!');go(nav('log'),'log','My Log')">+ Add to dinner log</button></div>'
+    +'<div class="btn-row"><button class="btn g" id="recipe-add-btn">+ Add to dinner log</button></div>'
     +'</div>';
+  // Use event listener to avoid inline onclick quote issues
+  setTimeout(function() {
+    var addBtn = document.getElementById('recipe-add-btn');
+    if (addBtn) {
+      addBtn.onclick = function() {
+        addFood({name:recipe.name, cal:recipe.cal, pro:recipe.pro, carb:recipe.carb, fat:recipe.fat, meal:'Dinner'});
+        toast(recipe.name + ' added to dinner!');
+        go(nav('log'), 'log', 'My Log');
+      };
+    }
+  }, 50);
   unlock('recipe');
 }
 
@@ -726,7 +696,7 @@ function searchRest(q){renderRestaurants(q);}
 function showMenu(name){
   const items=RESTS[name];
   const el=document.getElementById('rest-menu');el.style.display='block';
-  el.innerHTML=`<div class="card"><div class="card-hd"><div class="card-title">🍔 ${name}</div><button class="btn sm ghost" onclick="document.getElementById('rest-menu').style.display='none'">← Back</button></div>${items.map(it=>`<div class="rest-item"><div><div class="rest-name">${it.name}</div><div class="rest-macros">${it.cal} kcal · ${it.pro}g pro · ${it.carb}g carbs · ${it.fat}g fat</div></div><button class="btn g sm" onclick="addFood({name:'${it.name} (${name})',cal:${it.cal},pro:${it.pro},carb:${it.carb},fat:${it.fat},meal:'Lunch'});toast('✅ Added!');go(nav('log'),'log','My Log')">+ Add</button></div>`).join('')}</div>`;
+  el.innerHTML=`<div class="card"><div class="card-hd"><div class="card-title">🍔 ${name}</div><button class="btn sm ghost" onclick="document.getElementById("rest-menu").style.display='none'">← Back</button></div>${items.map(it=>`<div class="rest-item"><div><div class="rest-name">${it.name}</div><div class="rest-macros">${it.cal} kcal · ${it.pro}g pro · ${it.carb}g carbs · ${it.fat}g fat</div></div><button class="btn g sm" onclick="addFood({name:'${it.name} (${name})',cal:${it.cal},pro:${it.pro},carb:${it.carb},fat:${it.fat},meal:'Lunch'});toast('✅ Added!');go(nav('log'),'log','My Log')">+ Add</button></div>`).join('')}</div>`;
 }
 
 // =============================================
@@ -838,7 +808,7 @@ function addGut(){
     const badFoods=S.gutLog.filter(e=>e.feelings.some(isBad)).map(e=>e.food);
     if(badFoods.length>=2){
       document.getElementById('gut-ai').style.display='block';
-      document.getElementById('gut-ai-text').textContent=`Pattern detected: You've reported discomfort after ${[...new Set(badFoods)].join(', ')}. Consider reducing these or trying an elimination approach. Log more entries for stronger insights.`;
+      document.getElementById('gut-ai-text').textContent=`Pattern detected: You have reported discomfort after ${[...new Set(badFoods)].join(', ')}. Consider reducing these or trying an elimination approach. Log more entries for stronger insights.`;
     }
   }
 }
@@ -866,82 +836,98 @@ function renderSocial(){
 // =============================================
 let chatHistory=[];
 function sendChat(){
-  const inp=document.getElementById('chat-in');const msg=inp.value.trim();if(!msg)return;
-  inp.value='';
-  addMsg(msg,'user');
+  var inp = document.getElementById('chat-in');
+  var msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = '';
+  addMsg(msg, 'user');
   unlock('coach');
-  const totCal=S.foods.reduce((s,f)=>s+f.cal,0);
-  const totPro=S.foods.reduce((s,f)=>s+f.pro,0);
-  const burned=S.workouts.reduce((s,w)=>s+w.burn,0);
-  const calGoal=S.cheat?S.goals.cal+500:S.goals.cal;
-  const remCal=Math.max(0,calGoal-totCal+burned);
-  const remPro=Math.max(0,S.goals.pro-totPro);
-  const lc=msg.toLowerCase();
-  let reply='';
+  var totCal = S.foods.reduce(function(s,f){return s+f.cal;}, 0);
+  var totPro = S.foods.reduce(function(s,f){return s+f.pro;}, 0);
+  var burned = S.workouts.reduce(function(s,w){return s+w.burn;}, 0);
+  var calGoal = S.cheat ? S.goals.cal+500 : S.goals.cal;
+  var remCal = Math.max(0, calGoal - totCal + burned);
+  var remPro = Math.max(0, S.goals.pro - totPro);
+  var lc = msg.toLowerCase();
+  var reply = '';
 
-  if(lc.includes('on track')||lc.includes('how am i doing')||lc.includes('doing good')){
-    const pct=Math.round(totCal/calGoal*100);
-    const proPct=Math.round(totPro/S.goals.pro*100);
-    reply='You're at '+totCal+' cal ('+pct+'% of goal) and '+totPro+'g protein ('+proPct+'% of goal) today. '
-      +(pct<50&&proPct<50?'Plenty of room left — keep logging!':pct>90?'Almost at your limit — light snacks only from here.':'Looking solid! Keep it up 💪');
-  } else if(lc.includes('how many cal')||lc.includes('calories left')||lc.includes('cal left')){
-    reply='You have '+remCal+' calories remaining today. You've had '+totCal+' kcal and burned '+burned+' kcal from workouts.';
-  } else if(lc.includes('protein')||lc.includes('pro left')){
-    reply=remPro>0?'You need '+remPro+'g more protein today. Great sources: Greek yogurt (17g), chicken breast (31g per 100g), eggs (6g each), cottage cheese (25g per cup), or a protein shake (25-30g).':'You've already hit your protein goal of '+S.goals.pro+'g today! Great work 💪';
-  } else if(lc.includes('snack')||lc.includes('snacks')){
-    const snacks=[
-      {n:'Greek yogurt (1 cup)',cal:150,pro:17},{n:'Hard boiled eggs (2)',cal:140,pro:12},
-      {n:'Cottage cheese (1/2 cup)',cal:110,pro:13},{n:'Protein bar',cal:200,pro:20},
-      {n:'Apple + peanut butter',cal:200,pro:7},{n:'String cheese (2)',cal:160,pro:14},
-      {n:'Almonds (1 oz)',cal:170,pro:6},{n:'Turkey slices (2 oz)',cal:60,pro:12},
-    ].filter(s=>s.cal<=remCal);
-    reply='Here are snacks that fit your remaining '+remCal+' cal:
-'+snacks.slice(0,4).map(s=>'• '+s.n+' — '+s.cal+' kcal, '+s.pro+'g protein').join('
-');
-  } else if(lc.includes('dinner')||lc.includes('lunch')||lc.includes('breakfast')||lc.includes('meal idea')||lc.includes('what to eat')){
-    const meal=lc.includes('breakfast')?'breakfast':lc.includes('lunch')?'lunch':'dinner';
-    const ideas={
-      breakfast:['Oatmeal with berries and protein powder (420 kcal, 30g protein)','Egg white omelette with vegetables (280 kcal, 24g protein)','Greek yogurt parfait with granola (320 kcal, 22g protein)'],
-      lunch:['Grilled chicken salad with quinoa (450 kcal, 40g protein)','Turkey wrap with avocado (480 kcal, 32g protein)','Tuna pasta salad (490 kcal, 38g protein)'],
-      dinner:['Salmon with roasted veggies and rice (580 kcal, 42g protein)','Chicken stir fry over brown rice (520 kcal, 42g protein)','Lean beef tacos with black beans (560 kcal, 38g protein)'],
+  if (lc.includes('on track') || lc.includes('how am i doing')) {
+    var pct = Math.round(totCal/calGoal*100);
+    var proPct = Math.round(totPro/S.goals.pro*100);
+    reply = 'You are at ' + totCal + ' cal (' + pct + '% of goal) and ' + totPro + 'g protein (' + proPct + '% of goal) today. ';
+    reply += pct < 50 ? 'Plenty of room left, keep logging!' : pct > 90 ? 'Almost at your limit, light snacks only from here.' : 'Looking solid! Keep it up!';
+  } else if (lc.includes('calories left') || lc.includes('how many cal') || lc.includes('cal left')) {
+    reply = 'You have ' + remCal + ' calories remaining today. You have had ' + totCal + ' kcal and burned ' + burned + ' kcal from workouts.';
+  } else if (lc.includes('protein') || lc.includes('pro left')) {
+    reply = remPro > 0
+      ? 'You need ' + remPro + 'g more protein today. Try Greek yogurt (17g), chicken breast (31g per 100g), eggs (6g each), cottage cheese (25g per cup), or a protein shake.'
+      : 'You have already hit your protein goal of ' + S.goals.pro + 'g today! Great work!';
+  } else if (lc.includes('snack')) {
+    var snacks = [
+      {n:'Greek yogurt (1 cup)', cal:150, pro:17},
+      {n:'Hard boiled eggs (2)', cal:140, pro:12},
+      {n:'Cottage cheese (half cup)', cal:110, pro:13},
+      {n:'Protein bar', cal:200, pro:20},
+      {n:'Apple and peanut butter', cal:200, pro:7},
+      {n:'String cheese (2)', cal:160, pro:14},
+      {n:'Turkey slices (2 oz)', cal:60, pro:12},
+    ].filter(function(s){ return s.cal <= remCal; });
+    reply = 'Snacks that fit your remaining ' + remCal + ' cal: ';
+    reply += snacks.slice(0,4).map(function(s){ return s.n + ' - ' + s.cal + ' kcal, ' + s.pro + 'g protein'; }).join('. ');
+  } else if (lc.includes('dinner') || lc.includes('lunch') || lc.includes('breakfast') || lc.includes('meal idea')) {
+    var meal = lc.includes('breakfast') ? 'breakfast' : lc.includes('lunch') ? 'lunch' : 'dinner';
+    var ideas = {
+      breakfast: ['Oatmeal with berries and protein powder (420 kcal, 30g protein)', 'Egg white omelette with vegetables (280 kcal, 24g protein)', 'Greek yogurt parfait with granola (320 kcal, 22g protein)'],
+      lunch: ['Grilled chicken salad with quinoa (450 kcal, 40g protein)', 'Turkey wrap with avocado (480 kcal, 32g protein)', 'Tuna pasta salad (490 kcal, 38g protein)'],
+      dinner: ['Salmon with roasted veggies and rice (580 kcal, 42g protein)', 'Chicken stir fry over brown rice (520 kcal, 42g protein)', 'Lean beef tacos with black beans (560 kcal, 38g protein)'],
     };
-    reply='Here are '+meal+' ideas that fit your goals ('+remCal+' cal remaining):
-'+ideas[meal].map(i=>'• '+i).join('
-');
-  } else if(lc.includes('water')||lc.includes('hydrat')){
-    reply='You've had '+S.water+' of 8 cups today. '+(S.water>=8?'Amazing — fully hydrated! 💧':'Try to get '+(8-S.water)+' more cups. A good trick: drink a glass before each meal and one before bed.');
-  } else if(lc.includes('streak')||lc.includes('streak')){
-    reply='You're on a '+S.streak+'-day streak! '+(S.streak>=7?'That's a whole week — incredible consistency! 🔥':S.streak>=3?'Keep it going — you're building a real habit! 🔥':'Every day logged is a win. Keep showing up!');
-  } else if(lc.includes('cheat')||lc.includes('pizza')||lc.includes('junk')){
-    reply='One cheat meal won't ruin your progress — consistency over weeks matters way more than one day. You can activate Cheat Day mode in the log page to add +500 cal to your budget without messing up your streak. Enjoy it guilt-free and get back on track tomorrow 🍕';
-  } else if(lc.includes('weight')||lc.includes('lose')||lc.includes('cut')){
-    reply='To lose weight: aim for a 300-500 calorie deficit per day. Your goal is '+calGoal+' kcal. Keep protein high ('+S.goals.pro+'g) to preserve muscle. Log your weight daily in Progress → Weight and you'll start seeing trends within a week.';
-  } else if(lc.includes('muscle')||lc.includes('gain')||lc.includes('bulk')){
-    reply='To build muscle: hit '+S.goals.pro+'g protein every day and eat at or slightly above your calorie goal of '+calGoal+'. You're at '+totPro+'g protein today. Progressive overload in the gym matters more than any supplement — log your workouts in My Log.';
-  } else if(lc.includes('rate')||lc.includes('score')||lc.includes('week')){
-    const wd=weeklyData();const filled=wd.filter(d=>d.cal>0);
-    const avg=filled.length?Math.round(filled.reduce((s,d)=>s+d.cal,0)/filled.length):0;
-    const score=Math.min(10,Math.round((filled.length/7)*5+(avg>0&&Math.abs(avg-calGoal)<300?3:1)+(S.streak>=3?2:0)));
-    reply='This week I'd rate you '+score+'/10. '+(filled.length+' of 7 days logged, avg '+avg+' kcal/day. '+
-      (score>=8?'Seriously impressive — you're crushing it! 🏆':score>=6?'Solid week! A bit more consistency and you'll be elite.':'Keep showing up — every logged day counts toward the habit.'));
-  } else if(lc.includes('gut')||lc.includes('bloat')||lc.includes('digest')){
-    const entries=S.gutLog||[];
-    if(entries.length>0){
-      const bad=entries.filter(e=>e.feelings.some(f=>['Bloated','Stomach pain','Nauseous'].includes(f)));
-      reply=bad.length>0?'Based on your gut journal, you've had issues after eating: '+[...new Set(bad.map(e=>e.food))].join(', ')+'. Consider reducing those or trying an elimination approach.':'Your gut journal looks pretty good! No major red flags detected. Keep logging.';
-    } else { reply='You haven't logged any gut entries yet. Go to Gut Health in the sidebar to start tracking how different foods make you feel. After a few entries I can spot patterns for you!'; }
-  } else if(lc.includes('hello')||lc.includes('hi')||lc.includes('hey')){
-    reply='Hey Quinn! 👋 Ready to crush today's goals? You're at '+totCal+' cal and '+totPro+'g protein so far. What do you need help with?';
+    reply = 'Here are ' + meal + ' ideas that fit your goals (' + remCal + ' cal remaining): ';
+    reply += ideas[meal].map(function(i){ return i; }).join('. ');
+  } else if (lc.includes('water') || lc.includes('hydrat')) {
+    reply = 'You have had ' + S.water + ' of 8 cups today. ';
+    reply += S.water >= 8 ? 'Fully hydrated!' : 'Try to get ' + (8-S.water) + ' more cups. Drink a glass before each meal.';
+  } else if (lc.includes('streak')) {
+    reply = 'You are on a ' + S.streak + '-day streak! ';
+    reply += S.streak >= 7 ? 'That is a whole week - incredible! Keep going!' : S.streak >= 3 ? 'Keep it going, you are building a real habit!' : 'Every day logged is a win. Keep showing up!';
+  } else if (lc.includes('cheat') || lc.includes('pizza') || lc.includes('junk')) {
+    reply = 'One cheat meal will not ruin your progress. You can activate Cheat Day mode in the log page to add +500 cal to your budget without messing up your streak. Enjoy it and get back on track tomorrow!';
+  } else if (lc.includes('weight') || lc.includes('lose') || lc.includes('cut')) {
+    reply = 'To lose weight, aim for a 300-500 calorie deficit per day. Your goal is ' + calGoal + ' kcal. Keep protein high at ' + S.goals.pro + 'g to preserve muscle. Log your weight daily in Progress to track trends.';
+  } else if (lc.includes('muscle') || lc.includes('gain') || lc.includes('bulk')) {
+    reply = 'To build muscle, hit ' + S.goals.pro + 'g protein every day and eat at or slightly above your calorie goal of ' + calGoal + '. You are at ' + totPro + 'g protein today. Progressive overload in the gym matters most.';
+  } else if (lc.includes('rate') || lc.includes('score') || lc.includes('week')) {
+    var wd = weeklyData();
+    var filled = wd.filter(function(d){ return d.cal > 0; });
+    var avg = filled.length ? Math.round(filled.reduce(function(s,d){ return s+d.cal; }, 0) / filled.length) : 0;
+    var score = Math.min(10, Math.round((filled.length/7)*5 + (avg > 0 && Math.abs(avg-calGoal) < 300 ? 3 : 1) + (S.streak >= 3 ? 2 : 0)));
+    reply = 'This week I would rate you ' + score + '/10. ' + filled.length + ' of 7 days logged, average ' + avg + ' kcal per day. ';
+    reply += score >= 8 ? 'Seriously impressive, you are crushing it!' : score >= 6 ? 'Solid week! More consistency and you will be elite.' : 'Keep showing up, every logged day counts.';
+  } else if (lc.includes('gut') || lc.includes('bloat') || lc.includes('digest')) {
+    var entries = S.gutLog || [];
+    if (entries.length > 0) {
+      var bad = entries.filter(function(e){ return e.feelings.some(function(f){ return ['Bloated','Stomach pain','Nauseous'].includes(f); }); });
+      reply = bad.length > 0
+        ? 'Based on your gut journal, you have had issues after: ' + [...new Set(bad.map(function(e){ return e.food; }))].join(', ') + '. Consider reducing those foods.'
+        : 'Your gut journal looks good! No major red flags detected yet.';
+    } else {
+      reply = 'You have not logged any gut entries yet. Go to Gut Health in the sidebar to start tracking how foods make you feel.';
+    }
+  } else if (lc.includes('hello') || lc.includes('hi') || lc.includes('hey')) {
+    reply = 'Hey Quinn! Ready to crush today goals? You are at ' + totCal + ' cal and ' + totPro + 'g protein so far. What do you need help with?';
   } else {
-    const tips=['Focus on hitting your protein goal first — everything else falls into place when protein is right.','Consistency beats perfection every time. One bad meal doesn't define your diet.','Drink a glass of water before each meal — helps with portion control and hits your water goal.','Sleep 7-9 hours — it affects hunger hormones more than most people realize.','Meal prepping Sunday saves you from bad choices all week.'];
-    reply=tips[Math.floor(Math.random()*tips.length)]+'
-
-Ask me anything specific — protein goals, meal ideas, calorie budget, gut health, streak tips!';
+    var tips = [
+      'Focus on hitting your protein goal first - everything else falls into place.',
+      'Consistency beats perfection every time. One bad meal does not define your diet.',
+      'Drink a glass of water before each meal to hit your water goal and control portions.',
+      'Sleep 7-9 hours - it affects hunger hormones more than most people realize.',
+      'Meal prepping on Sunday saves you from bad choices all week.',
+    ];
+    reply = tips[Math.floor(Math.random()*tips.length)] + ' Ask me anything about protein goals, meal ideas, calorie budget, or gut health!';
   }
-  addMsg(reply,'ai');
-  const wrap=document.getElementById('chat-msgs');wrap.scrollTop=wrap.scrollHeight;
+  addMsg(reply, 'ai');
+  var wrap = document.getElementById('chat-msgs');
+  wrap.scrollTop = wrap.scrollHeight;
 }
-
 
 function qChat(msg){document.getElementById('chat-in').value=msg;sendChat();}
 function addMsg(text,role){
@@ -996,10 +982,10 @@ function genReport(){
     +'<div style="font-family:"Bebas Neue",sans-serif;font-size:48px;color:'+scoreColor+';line-height:1">'+score+'</div>'
     +'<div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.1em">/10 score</div>'
     +'</div>'
-    +'<div><div style="font-family:"Bebas Neue",sans-serif;font-size:20px;color:var(--text)">Quinn\'s Weekly Report</div>'
+    +'<div><div style="font-family:"Bebas Neue",sans-serif;font-size:20px;color:var(--text)">Quinn Weekly Report</div>'
     +'<div style="font-size:12px;color:var(--text3);margin-top:4px">'+filled.length+' days logged · avg '+avgCal+' kcal · avg '+avgPro+'g protein · '+S.streak+' day streak</div></div>'
     +'</div>'
-    +(strengths.length?'<div style="font-size:11px;color:var(--g);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">✅ What's working</div><ul style="padding-left:16px;margin-bottom:16px">'+strengths.map(s=>'<li style="font-size:13px;color:var(--text2);margin-bottom:4px;line-height:1.4">'+s+'</li>').join('')+'</ul>':'')
+    +(strengths.length?'<div style="font-size:11px;color:var(--g);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">✅ What is working</div><ul style="padding-left:16px;margin-bottom:16px">'+strengths.map(s=>'<li style="font-size:13px;color:var(--text2);margin-bottom:4px;line-height:1.4">'+s+'</li>').join('')+'</ul>':'')
     +(improvements.length?'<div style="font-size:11px;color:var(--yellow);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">⚡ Areas to improve</div><ul style="padding-left:16px;margin-bottom:16px">'+improvements.map(s=>'<li style="font-size:13px;color:var(--text2);margin-bottom:4px;line-height:1.4">'+s+'</li>').join('')+'</ul>':'')
     +'<div style="font-size:11px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">🎯 Action plan for next week</div><ul style="padding-left:16px">'+actions.map(s=>'<li style="font-size:13px;color:var(--text2);margin-bottom:4px;line-height:1.4">'+s+'</li>').join('')+'</ul>'
     +'</div>';
@@ -1263,12 +1249,12 @@ function getFitInsight() {
   const stepGoal = 10000;
   const tips = [];
   if(fd.steps && fd.steps >= stepGoal) tips.push('You crushed your step goal with '+(fd.steps||0).toLocaleString()+' steps today! 🎉');
-  else if(fd.steps) tips.push('You've done '+(fd.steps||0).toLocaleString()+' steps — '+(stepGoal-fd.steps).toLocaleString()+' more to hit 10k!');
+  else if(fd.steps) tips.push('You have done '+(fd.steps||0).toLocaleString()+' steps — '+(stepGoal-fd.steps).toLocaleString()+' more to hit 10k!');
   if(fd.sleep && fd.sleep < 7) tips.push('Sleep was only '+fd.sleep+'hrs last night. Under 7hrs raises hunger hormones — try to get 7-9hrs for best results.');
   else if(fd.sleep && fd.sleep >= 8) tips.push('Great sleep at '+fd.sleep+'hrs — your body recovers and builds muscle during sleep 💤');
   if(fd.burned && fd.burned > 400) tips.push('You burned '+fd.burned+' calories from activity — your net calorie budget is now higher. You have room for a bigger meal!');
   if(totPro < S.goals.pro * 0.6) tips.push('Protein is only at '+totPro+'g today. With your activity level, hitting '+S.goals.pro+'g is extra important for recovery.');
-  if(fd.hr && fd.hr < 60) tips.push('Resting HR of '+fd.hr+'bpm is excellent — that's an athlete-level number 💪');
+  if(fd.hr && fd.hr < 60) tips.push('Resting HR of '+fd.hr+'bpm is excellent — that is an athlete-level number 💪');
   const insight = tips.length > 0 ? tips.join(' ') : 'Keep up the consistency! Log more days to see patterns in your fitness + nutrition data.';
   el.textContent = insight;
   if(!S.fitData) S.fitData = {};
