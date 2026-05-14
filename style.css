@@ -533,3 +533,219 @@ canvas{display:block;border-radius:var(--r-sm)}
   .g2{grid-template-columns:1fr}
   .g4{grid-template-columns:1fr 1fr}
 }
+
+/* ============ FONT OVERRIDE (Nunito for body friendliness) ============ */
+body{font-family:'Nunito','DM Sans',sans-serif}
+button,input,select,textarea{font-family:'Nunito','DM Sans',sans-serif}
+
+/* ============ ONBOARDING MODAL ============ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:1000;
+  display:none;align-items:center;justify-content:center;padding:16px
+}
+.modal-overlay.show{display:flex}
+.modal-box{
+  background:var(--surface);border:1px solid var(--border2);border-radius:24px;
+  padding:36px 32px;max-width:420px;width:100%;text-align:center;
+  animation:popIn 0.3s cubic-bezier(0.34,1.4,0.64,1)
+}
+@keyframes popIn{from{opacity:0;transform:scale(0.88)}to{opacity:1;transform:scale(1)}}
+.ob-logo{font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--g);letter-spacing:2px;margin-bottom:4px}
+.ob-headline{font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px;line-height:1.2}
+.ob-sub{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.5}
+.ob-step{display:none}
+.ob-step.active{display:block}
+.ob-field{margin-bottom:14px;text-align:left}
+.ob-field .field-label{font-size:11px}
+.ob-goals{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 24px}
+.ob-goal-btn{
+  padding:16px 10px;border-radius:var(--r);border:2px solid var(--border2);
+  background:var(--surface2);color:var(--text);cursor:pointer;
+  font-family:'Nunito','DM Sans',sans-serif;font-size:13px;font-weight:700;
+  transition:all 0.15s;text-align:center;line-height:1.4
+}
+.ob-goal-btn:hover{border-color:var(--g);background:var(--g4);color:var(--g)}
+.ob-goal-btn .ob-goal-icon{font-size:24px;display:block;margin-bottom:6px}
+.ob-tips{display:flex;flex-direction:column;gap:10px;margin:16px 0 24px;text-align:left}
+.ob-tip{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--surface2);border-radius:var(--r-sm);border:1px solid var(--border)
+}
+.ob-tip-icon{font-size:22px;flex-shrink:0}
+.ob-tip-text{font-size:13px;color:var(--text2);line-height:1.4}
+.ob-tip-text strong{color:var(--text);display:block;font-weight:700;margin-bottom:2px}
+.ob-btn{
+  width:100%;padding:14px;border-radius:var(--r-sm);border:none;
+  background:var(--g);color:#000;font-family:'Nunito','DM Sans',sans-serif;
+  font-size:15px;font-weight:800;cursor:pointer;transition:all 0.15s;margin-top:4px
+}
+.ob-btn:hover{background:var(--g2);transform:translateY(-1px)}
+.ob-btn:active{transform:scale(0.98)}
+.ob-skip{
+  font-size:12px;color:var(--text3);cursor:pointer;margin-top:14px;
+  display:inline-block;text-decoration:underline
+}
+.ob-skip:hover{color:var(--text2)}
+body.light .modal-overlay{background:rgba(0,0,0,0.55)}
+
+/* ============ DASHBOARD HERO RING ============ */
+.dash-hero-row{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;margin-bottom:6px}
+.hero-ring-card{
+  background:var(--g);border-radius:var(--r-lg);padding:20px 22px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;min-width:140px
+}
+.hero-ring-card::before{
+  content:'';position:absolute;top:-30px;right:-30px;
+  width:100px;height:100px;background:rgba(0,0,0,0.08);border-radius:50%
+}
+.ring-wrap{position:relative;width:90px;height:90px}
+.ring-wrap svg{transform:rotate(-90deg)}
+#cal-ring-fill{transition:stroke-dashoffset 0.9s cubic-bezier(0.34,1.1,0.64,1)}
+.ring-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;pointer-events:none
+}
+.ring-value{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#000;line-height:1}
+.ring-pct{font-size:9px;font-weight:700;color:rgba(0,0,0,0.55);letter-spacing:0.05em;text-transform:uppercase}
+.ring-sub{font-size:10px;color:rgba(0,0,0,0.65);margin-top:8px;font-weight:700;text-align:center}
+.dash-tiles-col{display:flex;flex-direction:column;gap:10px}
+.dash-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ============ DAILY CHALLENGES ============ */
+.challenge-row{
+  display:flex;align-items:center;gap:12px;padding:10px 0;
+  border-bottom:1px solid var(--border)
+}
+.challenge-row:last-child{border-bottom:none}
+.challenge-icon{font-size:20px;flex-shrink:0;width:28px;text-align:center}
+.challenge-text{flex:1;font-size:13px;font-weight:600;color:var(--text)}
+.challenge-check{
+  width:22px;height:22px;border-radius:50%;border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:11px;
+  flex-shrink:0;transition:all 0.2s
+}
+.challenge-check.done{background:var(--g);border-color:var(--g);color:#000}
+
+/* ============ MACRO MINI BARS ============ */
+.macro-row{display:flex;flex-direction:column;gap:2px;margin:3px 0}
+.macro-row-hd{display:flex;justify-content:space-between;margin-bottom:2px}
+.macro-lbl{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.07em}
+.macro-val{font-size:10px;color:var(--text2);font-weight:600}
+.macro-bar{height:4px;border-radius:99px;background:var(--border);overflow:hidden;margin-bottom:6px}
+.macro-bar-fill{height:4px;border-radius:99px;transition:width 0.7s cubic-bezier(0.34,1.2,0.64,1)}
+
+/* ============ BARCODE SCANNER ============ */
+.scan-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+.scan-tab{
+  padding:10px 16px;font-size:13px;font-weight:700;color:var(--text3);
+  cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;
+  white-space:nowrap;transition:all 0.15s;flex:1;text-align:center
+}
+.scan-tab:hover{color:var(--text2)}
+.scan-tab.on{color:var(--g);border-color:var(--g)}
+.scan-pane{display:none}
+.scan-pane.active{display:block}
+.barcode-camera-wrap{
+  position:relative;width:100%;max-width:420px;margin:0 auto 16px;
+  border-radius:var(--r);overflow:hidden;background:#000;aspect-ratio:4/3
+}
+#barcode-video{width:100%;height:100%;object-fit:cover;display:block}
+.barcode-frame{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  pointer-events:none
+}
+.barcode-frame::before{
+  content:'';display:block;width:65%;aspect-ratio:2/1;
+  border:2px solid var(--g);border-radius:8px;
+  box-shadow:0 0 0 4000px rgba(0,0,0,0.4)
+}
+.barcode-frame-line{
+  position:absolute;left:17.5%;right:17.5%;height:2px;
+  background:var(--g);opacity:0.9;
+  animation:scanLine 1.8s ease-in-out infinite
+}
+@keyframes scanLine{
+  0%{top:30%;opacity:1}50%{top:68%;opacity:0.7}100%{top:30%;opacity:1}
+}
+#barcode-status{font-size:12px;color:var(--text3);text-align:center;margin-bottom:8px;min-height:18px}
+#barcode-result{margin-top:14px}
+.scan-device-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.scan-device-row select{flex:1}
+
+/* ============ FAMILY SETTINGS ============ */
+.family-member-row{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r-sm);margin-bottom:8px
+}
+.fam-avatar{
+  width:36px;height:36px;border-radius:50%;background:var(--g);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:14px;color:#000;flex-shrink:0
+}
+.fam-info{flex:1}
+.fam-name{font-size:13px;font-weight:700;color:var(--text)}
+.fam-goals{font-size:11px;color:var(--text3);margin-top:2px}
+.fam-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px 6px;transition:color 0.15s}
+.fam-remove:hover{color:var(--red)}
+
+/* ============ PLAN PAGE FAMILY TABS ============ */
+.family-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.family-tab-btn{
+  padding:7px 16px;border-radius:99px;border:1.5px solid var(--border2);
+  background:var(--surface2);color:var(--text2);font-size:12px;font-weight:700;
+  cursor:pointer;transition:all 0.15s
+}
+.family-tab-btn:hover{border-color:var(--g);color:var(--g)}
+.family-tab-btn.active{background:var(--g3);border-color:var(--g);color:var(--g)}
+
+/* ============ STREAK BURST ============ */
+.streak-burst{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--yellow);
+  letter-spacing:0.5px
+}
+.streak-burst small{font-family:'Nunito','DM Sans',sans-serif;font-size:10px;color:var(--text3);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-left:2px}
+
+/* ============ AI COACH CARD ============ */
+.ai-prompt-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.ai-prompt-chip{
+  padding:6px 14px;border-radius:99px;border:1px solid var(--border2);
+  background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all 0.15s
+}
+.ai-prompt-chip:hover{border-color:var(--g);color:var(--g);background:var(--g4)}
+
+/* ============ PROGRESS PAGE ENHANCEMENTS ============ */
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.stat-row:last-child{border-bottom:none}
+.stat-label{font-size:13px;color:var(--text2);font-weight:500}
+.stat-value{font-size:14px;font-weight:800;color:var(--text)}
+
+/* ============ LIGHT MODE REFINEMENTS ============ */
+body.light .hero-ring-card{box-shadow:0 4px 20px rgba(0,180,90,0.25)}
+body.light .ob-goal-btn:hover{background:rgba(0,180,90,0.08)}
+body.light .barcode-frame::before{box-shadow:0 0 0 4000px rgba(255,255,255,0.35)}
+body.light .challenge-check{border-color:var(--border2)}
+body.light .family-member-row{background:var(--surface2);border-color:var(--border)}
+body.light .family-tab-btn{background:var(--surface2)}
+body.light .scan-tab.on{color:var(--g2)}
+body.light .modal-box{box-shadow:0 8px 40px rgba(0,0,0,0.15)}
+body.light .ai-prompt-chip{background:var(--surface2);border-color:var(--border2)}
+
+/* ============ RESPONSIVE ADDITIONS ============ */
+@media(max-width:700px){
+  .dash-hero-row{grid-template-columns:1fr;justify-items:center}
+  .dash-tiles{grid-template-columns:1fr 1fr}
+  .ob-goals{grid-template-columns:1fr 1fr}
+  .modal-box{padding:28px 20px}
+  .barcode-camera-wrap{max-width:100%}
+  .family-tabs{gap:5px}
+}
+@media(max-width:480px){
+  .dash-hero-row{gap:10px}
+  .hero-ring-card{min-width:unset;width:100%;flex-direction:row;gap:14px;padding:16px 18px}
+  .ob-goals{grid-template-columns:1fr 1fr}
+  .scan-tabs .scan-tab{padding:9px 8px;font-size:12px}
+}
