@@ -243,6 +243,7 @@ function esc(str) {
 function showOnboarding() {
   const modal = document.getElementById('onboard-modal');
   if (modal) modal.classList.add('show');
+  onboardNext(1);
 }
 function closeOnboarding() {
   const modal = document.getElementById('onboard-modal');
