@@ -46,7 +46,7 @@ body.light{
   --g3: rgba(0,180,90,0.1);
   --g4: rgba(0,180,90,0.05);
 }
-body.light{ background:#f0f2ed; }
+body.light{ background:#f0f2ed; color:var(--text); }
 body.light .sidebar{ background:#1a1f18; }
 body.light .sidebar-footer{ border-top-color:rgba(255,255,255,0.08); }
 body.light .sidebar-logo{ border-bottom-color:rgba(255,255,255,0.08); }
@@ -569,7 +569,8 @@ button,input,select,textarea{font-family:'Nunito','DM Sans',sans-serif}
 .ob-tips{display:flex;flex-direction:column;gap:10px;margin:16px 0 24px;text-align:left}
 .ob-tip{
   display:flex;align-items:center;gap:12px;padding:12px 14px;
-  background:var(--surface2);border-radius:var(--r-sm);border:1px solid var(--border)
+  background:var(--surface2);border-radius:var(--r-sm);border:1px solid var(--border);
+  color:var(--text2)
 }
 .ob-tip-icon{font-size:22px;flex-shrink:0}
 .ob-tip-text{font-size:13px;color:var(--text2);line-height:1.4}
