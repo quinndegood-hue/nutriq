@@ -699,27 +699,8 @@ function doScan(input) {
 // =============================================
 let barcodeReader = null;
 let barcodeActive = false;
-
-function getZXing() {
-  return window.ZXingBrowser || window.ZXing || null;
-}
-
-function loadZXingScript() {
-  return new Promise((resolve, reject) => {
-    if (getZXing()) { resolve(); return; }
-    const tryScript = (src, fallback) => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.onload = () => { if (window.ZXing && !window.ZXingBrowser) window.ZXingBrowser = window.ZXing; resolve(); };
-      s.onerror = () => fallback ? tryScript(fallback, null) : reject();
-      document.head.appendChild(s);
-    };
-    tryScript(
-      'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/umd/index.min.js',
-      'https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js'
-    );
-  });
-}
+let barcodeStream = null;
+let barcodeAnimFrame = null;
 
 async function startBarcodeScanner() {
   if (barcodeActive) return;
@@ -727,59 +708,82 @@ async function startBarcodeScanner() {
   const statusEl  = document.getElementById('barcode-status');
   if (!container) return;
 
-  if (!getZXing()) {
-    statusEl.innerHTML = '<span class="spin"></span> Loading barcode library...';
-    try {
-      await loadZXingScript();
-    } catch(e) {
-      statusEl.innerHTML = 'Barcode scanner unavailable in this browser. Use the <b>Photo/Search</b> tab instead.';
-      return;
-    }
-  }
-
   container.style.display = 'block';
   statusEl.innerHTML = '<span class="spin"></span> Starting camera...';
+  barcodeActive = true;
+  document.getElementById('barcode-start-btn').style.display = 'none';
+  document.getElementById('barcode-stop-btn').style.display  = 'inline-flex';
 
   try {
-    const ZXing = getZXing();
-    if (!ZXing) { statusEl.textContent = 'Barcode library failed to load. Use Photo/Search tab.'; return; }
-    barcodeReader = new ZXing.BrowserMultiFormatReader();
-    barcodeActive = true;
-    document.getElementById('barcode-start-btn').style.display = 'none';
-    document.getElementById('barcode-stop-btn').style.display  = 'inline-flex';
-
-    let devices = [];
-    try { devices = await (ZXing.BrowserCodeReader||ZXing.BrowserMultiFormatReader).listVideoInputDevices(); } catch(e) {}
-
-    // Prefer back camera
-    const backCam = devices.find(d => /back|rear|environment/i.test(d.label));
-    const deviceId = backCam ? backCam.deviceId : (devices[devices.length-1]?.deviceId);
-
-    await barcodeReader.decodeFromVideoDevice(deviceId, 'barcode-video', async (result, err) => {
-      if (result) {
-        const code = result.getText();
-        stopBarcodeScanner();
-        statusEl.innerHTML = '<span class="spin"></span> Found barcode '+code+' — looking up...';
-        await lookupBarcode(code);
-        unlock('barcode');
-      }
+    // Request camera (prefer back camera on phones)
+    barcodeStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
+    const video = document.getElementById('barcode-video');
+    video.srcObject = barcodeStream;
+    video.style.display = 'block';
+    await video.play();
 
-    statusEl.innerHTML = '📊 Point camera at a barcode on any food package';
-    document.getElementById('barcode-video').style.display = 'block';
+    // Use native BarcodeDetector if available (Chrome 83+, Edge)
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code'] });
+      statusEl.textContent = '📊 Point camera at a barcode on any food package';
+      const scan = async () => {
+        if (!barcodeActive) return;
+        try {
+          const barcodes = await detector.detect(video);
+          if (barcodes.length > 0) {
+            const code = barcodes[0].rawValue;
+            stopBarcodeScanner();
+            statusEl.innerHTML = '<span class="spin"></span> Found '+code+' — looking up...';
+            await lookupBarcode(code);
+            unlock('barcode');
+            return;
+          }
+        } catch(e) {}
+        barcodeAnimFrame = requestAnimationFrame(scan);
+      };
+      barcodeAnimFrame = requestAnimationFrame(scan);
+
+    // Fallback: try ZXing from CDN
+    } else {
+      statusEl.innerHTML = '<span class="spin"></span> Loading scanner library...';
+      const ZXing = await new Promise((res, rej) => {
+        if (window.ZXingBrowser || window.ZXing) { res(window.ZXingBrowser || window.ZXing); return; }
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js';
+        s.onload = () => res(window.ZXing || window.ZXingBrowser);
+        s.onerror = rej;
+        document.head.appendChild(s);
+      });
+      if (!ZXing) throw new Error('no library');
+      barcodeReader = new ZXing.BrowserMultiFormatReader();
+      statusEl.textContent = '📊 Point camera at a barcode on any food package';
+      barcodeReader.decodeFromStream(barcodeStream, document.getElementById('barcode-video'), async (result) => {
+        if (result && barcodeActive) {
+          const code = result.getText();
+          stopBarcodeScanner();
+          statusEl.innerHTML = '<span class="spin"></span> Found '+code+' — looking up...';
+          await lookupBarcode(code);
+          unlock('barcode');
+        }
+      });
+    }
   } catch(e) {
-    barcodeActive = false;
-    statusEl.textContent = 'Camera access denied. Please allow camera permissions and try again.';
-    document.getElementById('barcode-start-btn').style.display = 'inline-flex';
-    document.getElementById('barcode-stop-btn').style.display  = 'none';
+    stopBarcodeScanner();
+    statusEl.textContent = e && e.name === 'NotAllowedError'
+      ? 'Camera permission denied — please allow camera access and try again.'
+      : 'Camera not available. Use the Photo/Search tab to search foods manually.';
   }
 }
 
 function stopBarcodeScanner() {
-  if (barcodeReader) { try { barcodeReader.reset(); } catch(e) {} barcodeReader = null; }
   barcodeActive = false;
+  if (barcodeAnimFrame) { cancelAnimationFrame(barcodeAnimFrame); barcodeAnimFrame = null; }
+  if (barcodeReader) { try { barcodeReader.reset(); } catch(e) {} barcodeReader = null; }
+  if (barcodeStream) { barcodeStream.getTracks().forEach(t => t.stop()); barcodeStream = null; }
   const vid = document.getElementById('barcode-video');
-  if (vid) vid.style.display = 'none';
+  if (vid) { vid.srcObject = null; vid.style.display = 'none'; }
   document.getElementById('barcode-start-btn').style.display = 'inline-flex';
   document.getElementById('barcode-stop-btn').style.display  = 'none';
 }
