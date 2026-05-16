@@ -789,6 +789,11 @@ function toggleVoice() {
     return;
   }
   if (listening) { recognition.stop(); return; }
+  // reset previous result before starting a new session
+  document.getElementById('voice-result').innerHTML = '';
+  document.getElementById('voice-transcript').textContent = '';
+  document.getElementById('voice-transcript').style.display = 'none';
+  document.getElementById('voice-status').textContent = 'Tap to start speaking';
   recognition = new SR();
   recognition.continuous = false; recognition.interimResults = true; recognition.lang = 'en-US';
   recognition.onstart = () => {
