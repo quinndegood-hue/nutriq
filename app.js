@@ -700,29 +700,56 @@ function doScan(input) {
 let barcodeReader = null;
 let barcodeActive = false;
 
+function getZXing() {
+  return window.ZXingBrowser || window.ZXing || null;
+}
+
+function loadZXingScript() {
+  return new Promise((resolve, reject) => {
+    if (getZXing()) { resolve(); return; }
+    const tryScript = (src, fallback) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => { if (window.ZXing && !window.ZXingBrowser) window.ZXingBrowser = window.ZXing; resolve(); };
+      s.onerror = () => fallback ? tryScript(fallback, null) : reject();
+      document.head.appendChild(s);
+    };
+    tryScript(
+      'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/umd/index.min.js',
+      'https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js'
+    );
+  });
+}
+
 async function startBarcodeScanner() {
   if (barcodeActive) return;
   const container = document.getElementById('barcode-scanner-wrap');
   const statusEl  = document.getElementById('barcode-status');
   if (!container) return;
 
-  if (!window.ZXingBrowser) {
-    statusEl.textContent = 'Barcode library loading... try again in a moment.';
-    return;
+  if (!getZXing()) {
+    statusEl.innerHTML = '<span class="spin"></span> Loading barcode library...';
+    try {
+      await loadZXingScript();
+    } catch(e) {
+      statusEl.innerHTML = 'Barcode scanner unavailable in this browser. Use the <b>Photo/Search</b> tab instead.';
+      return;
+    }
   }
 
   container.style.display = 'block';
   statusEl.innerHTML = '<span class="spin"></span> Starting camera...';
 
   try {
-    const ZXing = window.ZXingBrowser;
+    const ZXing = getZXing();
+    if (!ZXing) { statusEl.textContent = 'Barcode library failed to load. Use Photo/Search tab.'; return; }
     barcodeReader = new ZXing.BrowserMultiFormatReader();
     barcodeActive = true;
     document.getElementById('barcode-start-btn').style.display = 'none';
     document.getElementById('barcode-stop-btn').style.display  = 'inline-flex';
 
     let devices = [];
-    try { devices = await ZXing.BrowserCodeReader.listVideoInputDevices(); } catch(e) {}
+    try { devices = await (ZXing.BrowserCodeReader||ZXing.BrowserMultiFormatReader).listVideoInputDevices(); } catch(e) {}
 
     // Prefer back camera
     const backCam = devices.find(d => /back|rear|environment/i.test(d.label));
