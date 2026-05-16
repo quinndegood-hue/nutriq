@@ -56,6 +56,7 @@ const FRESH = () => ({
   onboarded: false,
   challenges: {},
   dietPrefs: [],
+  savedMeals: [],
 });
 
 function load() {
@@ -561,7 +562,28 @@ async function searchOFF(query, statusId, resultId) {
     const r = await fetch(url);
     const d = await r.json();
     _offProducts = (d.products||[]).filter(p => p.product_name && p.nutriments);
-    if (_offProducts.length === 0) { status.textContent = 'No results — try a different name.'; return; }
+    if (_offProducts.length === 0) {
+      const q2 = query.toLowerCase();
+      const matches = COMMON_FOODS.filter(f => f.name.toLowerCase().includes(q2));
+      if (matches.length > 0) {
+        status.textContent = matches.length + ' matches from built-in foods:';
+        result.innerHTML = matches.map((f,i) =>
+          '<div class="scan-result-wrap" style="margin-bottom:8px;cursor:pointer" data-cfidx="'+i+'">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
+          '<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+esc(f.name)+'</div>' +
+          '<div style="font-size:11px;color:var(--text3);margin-top:3px">'+f.cal+' kcal · '+f.pro+'g protein · '+f.carb+'g carbs · '+f.fat+'g fat</div></div>' +
+          '<div style="font-size:18px;font-weight:700;color:var(--g);flex-shrink:0">'+f.cal+'<span style="font-size:10px;color:var(--text3)"> kcal</span></div>' +
+          '</div></div>'
+        ).join('');
+        result.onclick = e => {
+          const card = e.target.closest('[data-cfidx]');
+          if (card) pickCommonFood(matches[parseInt(card.dataset.cfidx)], statusId, resultId);
+        };
+      } else {
+        status.textContent = 'No results — try a different name or use manual entry.';
+      }
+      return;
+    }
     status.textContent = _offProducts.length+' foods found — pick one:';
     result.innerHTML = _offProducts.map((p,i) => {
       const n = p.nutriments;
@@ -612,6 +634,25 @@ function pickOFF(i, statusId, resultId) {
     '<select id="e-meal" style="width:auto;padding:8px 10px;font-size:12px"><option>Breakfast</option><option selected>Lunch</option><option>Dinner</option><option>Snack</option></select>' +
     '<button class="btn g" onclick="addScannedPending()">+ Add to log</button>' +
     '<button class="btn ghost" onclick="searchOFF(\'\',\''+statusId+'\',\''+resultId+'\');document.getElementById(\''+resultId+'\').innerHTML=\'\';document.getElementById(\''+statusId+'\').textContent=\'\'">← Back</button>' +
+    '</div></div>';
+}
+
+function pickCommonFood(f, statusId, resultId) {
+  pendingOFFProduct = { name: f.name, cal: f.cal, pro: f.pro, carb: f.carb, fat: f.fat, statusId, resultId };
+  document.getElementById(statusId).textContent = '';
+  document.getElementById(resultId).innerHTML =
+    '<div class="scan-result-wrap">' +
+    '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px">'+esc(f.name)+'</div>' +
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Adjust for your portion size</div>' +
+    '<div class="g4" style="margin-bottom:12px">' +
+    '<div class="editable-tile"><div class="tile-label">Calories</div><input type="number" id="e-cal" value="'+f.cal+'" min="0"></div>' +
+    '<div class="editable-tile"><div class="tile-label">Protein g</div><input type="number" id="e-pro" value="'+f.pro+'" min="0"></div>' +
+    '<div class="editable-tile"><div class="tile-label">Carbs g</div><input type="number" id="e-carb" value="'+f.carb+'" min="0"></div>' +
+    '<div class="editable-tile"><div class="tile-label">Fat g</div><input type="number" id="e-fat" value="'+f.fat+'" min="0"></div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<select id="e-meal" style="width:auto;padding:8px 10px;font-size:12px"><option>Breakfast</option><option selected>Lunch</option><option>Dinner</option><option>Snack</option></select>' +
+    '<button class="btn g" onclick="addScannedPending()">+ Add to log</button>' +
     '</div></div>';
 }
 
@@ -941,6 +982,7 @@ function renderLog() {
   });
   const set = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
   set('log-cal',totC); set('log-pro',totP); set('log-carb',totCb); set('log-fat',totF);
+  renderSavedMeals();
   const wl = document.getElementById('workout-list');
   if (wl) wl.innerHTML = S.workouts.length === 0
     ? '<div style="font-size:13px;color:var(--text3);padding:8px 0">No workouts logged yet</div>'
@@ -1192,9 +1234,112 @@ const RESTS = {
     {name:'Orange chicken',cal:490,pro:22,carb:51,fat:23},
     {name:'Grilled teriyaki chicken',cal:300,pro:36,carb:13,fat:13},
   ],
+  "Wendy's": [
+    {name:'Dave\'s Single',cal:590,pro:30,carb:40,fat:34},
+    {name:'Spicy chicken sandwich',cal:500,pro:29,carb:54,fat:20},
+    {name:'Grilled chicken wrap',cal:270,pro:26,carb:24,fat:8},
+    {name:'Chili (large)',cal:330,pro:23,carb:35,fat:9},
+    {name:'Apple pecan salad',cal:480,pro:33,carb:41,fat:19},
+    {name:'Baked potato plain',cal:270,pro:7,carb:61,fat:0},
+  ],
+  'KFC': [
+    {name:'Original recipe breast',cal:390,pro:39,carb:11,fat:21},
+    {name:'Grilled chicken breast',cal:210,pro:38,carb:0,fat:7},
+    {name:'Famous bowl',cal:720,pro:26,carb:79,fat:34},
+    {name:'KFC bowl (no gravy)',cal:500,pro:22,carb:60,fat:18},
+    {name:'Cole slaw',cal:170,pro:1,carb:22,fat:9},
+    {name:'Corn on the cob',cal:70,pro:2,carb:13,fat:2},
+  ],
+  'Five Guys': [
+    {name:'Little burger',cal:550,pro:26,carb:40,fat:32},
+    {name:'Regular burger',cal:840,pro:41,carb:40,fat:52},
+    {name:'Veggie sandwich',cal:440,pro:11,carb:60,fat:17},
+    {name:'Little hot dog',cal:370,pro:14,carb:26,fat:23},
+    {name:'Regular fries',cal:953,pro:11,carb:131,fat:41},
+    {name:'Bacon cheeseburger',cal:920,pro:46,carb:40,fat:62},
+  ],
+  'Olive Garden': [
+    {name:'Chicken alfredo',cal:1480,pro:74,carb:105,fat:82},
+    {name:'Spaghetti & meatballs',cal:1090,pro:52,carb:134,fat:34},
+    {name:'Grilled chicken margherita',cal:590,pro:57,carb:43,fat:21},
+    {name:'Zuppa toscana soup',cal:220,pro:11,carb:19,fat:11},
+    {name:'House salad (no dressing)',cal:120,pro:6,carb:16,fat:4},
+    {name:'Breadstick (1)',cal:140,pro:5,carb:26,fat:2},
+  ],
+  'Shake Shack': [
+    {name:'ShackBurger',cal:500,pro:27,carb:38,fat:27},
+    {name:'SmokeShack',cal:580,pro:35,carb:38,fat:31},
+    {name:'Chicken Shack',cal:590,pro:35,carb:50,fat:28},
+    {name:'Veggie burger',cal:440,pro:16,carb:47,fat:22},
+    {name:'Crinkle cut fries',cal:470,pro:7,carb:60,fat:23},
+    {name:'Shack-cago dog',cal:380,pro:15,carb:33,fat:21},
+  ],
+  'Dominos': [
+    {name:'Pepperoni pizza (2 slices hand-tossed)',cal:510,pro:22,carb:60,fat:20},
+    {name:'Cheese pizza (2 slices thin crust)',cal:380,pro:17,carb:44,fat:14},
+    {name:'Chicken bacon ranch pizza (2 slices)',cal:560,pro:26,carb:56,fat:25},
+    {name:'Pacific veggie pizza (2 slices)',cal:420,pro:18,carb:58,fat:13},
+    {name:'Breadtwists (2)',cal:280,pro:10,carb:38,fat:10},
+    {name:'Wings (6pc plain)',cal:420,pro:36,carb:3,fat:30},
+  ],
 };
 
 const RESTS_KEYS = Object.keys(RESTS);
+
+const COMMON_FOODS = [
+  {name:'Egg (large)',cal:72,pro:6,carb:0,fat:5},
+  {name:'Egg whites (3)',cal:51,pro:11,carb:1,fat:0},
+  {name:'Chicken breast (100g)',cal:165,pro:31,carb:0,fat:4},
+  {name:'Turkey breast (100g)',cal:135,pro:30,carb:0,fat:1},
+  {name:'Salmon (100g)',cal:208,pro:20,carb:0,fat:13},
+  {name:'Tuna canned (100g)',cal:116,pro:25,carb:0,fat:1},
+  {name:'Ground beef lean (100g)',cal:250,pro:26,carb:0,fat:15},
+  {name:'Shrimp (100g)',cal:99,pro:24,carb:0,fat:1},
+  {name:'Greek yogurt plain (1 cup)',cal:130,pro:22,carb:9,fat:1},
+  {name:'Cottage cheese (1 cup)',cal:206,pro:28,carb:8,fat:5},
+  {name:'Cheddar cheese (1 oz)',cal:113,pro:7,carb:0,fat:9},
+  {name:'Mozzarella (1 oz)',cal:85,pro:6,carb:1,fat:6},
+  {name:'Whole milk (1 cup)',cal:149,pro:8,carb:12,fat:8},
+  {name:'Skim milk (1 cup)',cal:83,pro:8,carb:12,fat:0},
+  {name:'Whey protein (1 scoop)',cal:120,pro:25,carb:3,fat:2},
+  {name:'Brown rice (1 cup cooked)',cal:216,pro:5,carb:45,fat:2},
+  {name:'White rice (1 cup cooked)',cal:204,pro:4,carb:44,fat:0},
+  {name:'Oatmeal (1 cup cooked)',cal:154,pro:6,carb:28,fat:3},
+  {name:'Whole wheat bread (1 slice)',cal:81,pro:4,carb:15,fat:1},
+  {name:'Pasta (1 cup cooked)',cal:220,pro:8,carb:43,fat:1},
+  {name:'Quinoa (1 cup cooked)',cal:222,pro:8,carb:39,fat:4},
+  {name:'Flour tortilla (10 inch)',cal:218,pro:6,carb:36,fat:6},
+  {name:'Sweet potato (medium)',cal:112,pro:2,carb:26,fat:0},
+  {name:'Banana (medium)',cal:105,pro:1,carb:27,fat:0},
+  {name:'Apple (medium)',cal:95,pro:1,carb:25,fat:0},
+  {name:'Orange (medium)',cal:62,pro:1,carb:15,fat:0},
+  {name:'Strawberries (1 cup)',cal:49,pro:1,carb:12,fat:1},
+  {name:'Blueberries (1 cup)',cal:84,pro:1,carb:21,fat:1},
+  {name:'Avocado (half)',cal:120,pro:2,carb:6,fat:11},
+  {name:'Broccoli (1 cup)',cal:55,pro:4,carb:11,fat:1},
+  {name:'Spinach (1 cup raw)',cal:7,pro:1,carb:1,fat:0},
+  {name:'Baby carrots (1 cup)',cal:52,pro:1,carb:12,fat:0},
+  {name:'Mixed salad greens (2 cups)',cal:18,pro:1,carb:3,fat:0},
+  {name:'Almonds (1 oz)',cal:164,pro:6,carb:6,fat:14},
+  {name:'Peanut butter (2 tbsp)',cal:188,pro:8,carb:6,fat:16},
+  {name:'Mixed nuts (1 oz)',cal:172,pro:5,carb:6,fat:15},
+  {name:'Hummus (2 tbsp)',cal:70,pro:2,carb:6,fat:4},
+  {name:'Olive oil (1 tbsp)',cal:119,pro:0,carb:0,fat:14},
+  {name:'Lentils (1 cup cooked)',cal:230,pro:18,carb:40,fat:1},
+  {name:'Black beans (1 cup)',cal:227,pro:15,carb:41,fat:1},
+  {name:'Protein bar (avg)',cal:200,pro:20,carb:22,fat:7},
+  {name:'Granola bar',cal:193,pro:4,carb:29,fat:7},
+  {name:'Coffee black (8 oz)',cal:5,pro:0,carb:0,fat:0},
+  {name:'Orange juice (8 oz)',cal:112,pro:2,carb:26,fat:1},
+  {name:'Bagel (plain)',cal:270,pro:11,carb:53,fat:2},
+  {name:'Pancakes (2 medium)',cal:340,pro:8,carb:56,fat:10},
+  {name:'Scrambled eggs (2)',cal:182,pro:12,carb:2,fat:14},
+  {name:'Grilled cheese sandwich',cal:390,pro:16,carb:37,fat:20},
+  {name:'Tuna salad sandwich',cal:350,pro:25,carb:34,fat:12},
+  {name:'Caesar salad (no croutons)',cal:190,pro:7,carb:8,fat:16},
+  {name:'Beef steak (6 oz sirloin)',cal:420,pro:48,carb:0,fat:24},
+  {name:'Pork chop (6 oz)',cal:360,pro:44,carb:0,fat:19},
+];
 
 function renderRestaurants(q) {
   q = q || '';
@@ -1251,6 +1396,75 @@ function addRestItem(restIdx, itemIdx) {
   addFood({ name: it.name+' ('+name+')', cal:it.cal, pro:it.pro, carb:it.carb, fat:it.fat, meal:'Lunch' });
   toast('✅ ' + it.name + ' added!');
   go(nav('log'), 'log', 'My Log');
+}
+
+function addCustomRestItem() {
+  const name  = document.getElementById('cust-rest-name').value.trim();
+  const cal   = parseInt(document.getElementById('cust-rest-cal').value)||0;
+  const pro   = parseInt(document.getElementById('cust-rest-pro').value)||0;
+  const carb  = parseInt(document.getElementById('cust-rest-carb').value)||0;
+  const place = document.getElementById('cust-rest-place').value.trim();
+  if (!name) { toast('Enter a food name'); return; }
+  addFood({ name: name+(place?' ('+place+')':''), cal, pro, carb, fat:0, meal:'Lunch' });
+  ['cust-rest-name','cust-rest-cal','cust-rest-pro','cust-rest-carb','cust-rest-place'].forEach(id => {
+    const e = document.getElementById(id); if(e) e.value='';
+  });
+  toast('✅ '+name+' added to log!');
+  go(nav('log'), 'log', 'My Log');
+}
+
+// =============================================
+// MEAL TEMPLATES
+// =============================================
+function saveMealTemplate() {
+  if (!S.foods || S.foods.length === 0) { toast('Log some food first!'); return; }
+  const name = prompt("Name this meal template (e.g. 'My usual breakfast'):");
+  if (!name || !name.trim()) return;
+  if (!S.savedMeals) S.savedMeals = [];
+  S.savedMeals.push({
+    id: Date.now(),
+    name: name.trim(),
+    foods: S.foods.map(f => ({ name:f.name, cal:f.cal, pro:f.pro, carb:f.carb||0, fat:f.fat||0, meal:f.meal })),
+    cal: S.foods.reduce((s,f)=>s+f.cal,0),
+    pro: S.foods.reduce((s,f)=>s+f.pro,0),
+  });
+  save(); renderSavedMeals();
+  toast('✅ Meal saved as "'+name.trim()+'"!');
+}
+
+function logSavedMeal(idx) {
+  const t = S.savedMeals[idx]; if (!t) return;
+  t.foods.forEach(f => S.foods.push({ id:Date.now()+Math.random(), ...f }));
+  S.lastLogged = TODAY; save(); checkAch(); renderDash(); renderLog();
+  toast('✅ '+t.name+' logged!');
+  go(nav('log'), 'log', 'My Log');
+}
+
+function deleteSavedMeal(idx) {
+  if (!confirm('Delete "'+S.savedMeals[idx].name+'"?')) return;
+  S.savedMeals.splice(idx,1); save(); renderSavedMeals();
+}
+
+function renderSavedMeals() {
+  const el = document.getElementById('saved-meals-list'); if (!el) return;
+  if (!S.savedMeals || S.savedMeals.length === 0) {
+    el.innerHTML = '<div class="empty" style="padding:10px"><div class="empty-text">No saved meals yet</div></div>';
+    return;
+  }
+  el.innerHTML = S.savedMeals.map((t,i) =>
+    '<div class="food-row">' +
+    '<div style="flex:1"><div class="food-name">'+esc(t.name)+'</div>' +
+    '<div style="font-size:11px;color:var(--text3)">'+t.cal+' kcal · '+t.pro+'g protein · '+t.foods.length+' items</div></div>' +
+    '<button class="btn g sm" data-lsm="'+i+'">Log again</button>' +
+    '<button class="row-btn del" data-dsm="'+i+'">×</button>' +
+    '</div>'
+  ).join('');
+  el.onclick = e => {
+    const lb = e.target.closest('[data-lsm]');
+    const db = e.target.closest('[data-dsm]');
+    if (lb) logSavedMeal(parseInt(lb.dataset.lsm));
+    if (db) deleteSavedMeal(parseInt(db.dataset.dsm));
+  };
 }
 
 // =============================================
@@ -1920,6 +2134,35 @@ function exportData() {
   a.download = 'nutriq-export-'+TODAY+'.csv';
   a.click(); URL.revokeObjectURL(a.href);
   toast('📁 Data exported!');
+}
+
+function backupAllData() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'nutriq-backup-' + TODAY + '.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('✅ Full backup downloaded!');
+}
+
+function restoreAllData() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.goals) { toast('Invalid backup file'); return; }
+        if (!confirm('This will replace all your current data. Continue?')) return;
+        S = Object.assign(FRESH(), data);
+        save(); location.reload();
+      } catch(err) { toast('Could not read backup file'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 // =============================================

@@ -426,6 +426,14 @@
         </div>
       </div>
 
+      <div class="card" style="margin-top:4px">
+        <div class="card-hd">
+          <div class="card-title">⚡ Saved meals</div>
+          <button class="btn sm g" onclick="saveMealTemplate()">💾 Save today as meal</button>
+        </div>
+        <div id="saved-meals-list"></div>
+      </div>
+
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
         <div style="font-size:11px;color:var(--text3)">All data saves automatically</div>
         <button class="btn sm danger" onclick="clearLog()">Clear today's log</button>
@@ -495,6 +503,18 @@
         <div id="rest-list"></div>
       </div>
       <div id="rest-menu"></div>
+      <div class="card" style="margin-top:8px">
+        <div class="card-title" style="margin-bottom:12px">➕ Custom restaurant item</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Not on the list? Add any restaurant item directly.</div>
+        <div class="g2" style="margin-bottom:10px">
+          <div><span class="field-label">Food name</span><input type="text" id="cust-rest-name" placeholder="e.g. Burrito bowl"></div>
+          <div><span class="field-label">Restaurant</span><input type="text" id="cust-rest-place" placeholder="e.g. Local Grill"></div>
+          <div><span class="field-label">Calories</span><input type="number" id="cust-rest-cal" placeholder="600"></div>
+          <div><span class="field-label">Protein (g)</span><input type="number" id="cust-rest-pro" placeholder="30"></div>
+          <div><span class="field-label">Carbs (g)</span><input type="number" id="cust-rest-carb" placeholder="60"></div>
+        </div>
+        <button class="btn g" onclick="addCustomRestItem()">+ Add to today's log</button>
+      </div>
     </div>
 
     <!-- ====== PROGRESS ====== -->
@@ -721,6 +741,7 @@
         <div class="tab"    onclick="switchSettings('diet')">Diet</div>
         <div class="tab"    onclick="switchSettings('family')">Family</div>
         <div class="tab"    onclick="switchSettings('notifs')">AI &amp; Notifs</div>
+        <div class="tab"    onclick="switchSettings('data')">Data</div>
       </div>
 
       <!-- Profile -->
@@ -826,6 +847,23 @@
             <button class="btn danger sm" onclick="clearApiKey()">Remove</button>
           </div>
           <div style="font-size:11px;color:var(--text3);margin-top:10px">Get a free key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--g);text-decoration:none">console.anthropic.com</a></div>
+        </div>
+      </div>
+      <!-- Data backup -->
+      <div id="st-data" style="display:none">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px">💾 Backup &amp; restore</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">Back up everything — your food logs, goals, streak, and settings — to a JSON file on your device. Restore it any time to recover your data or move to a new browser.</div>
+          <div class="btn-row">
+            <button class="btn g" onclick="backupAllData()">⬇️ Download backup</button>
+            <button class="btn ghost" onclick="restoreAllData()">⬆️ Restore from file</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:12px">⚠️ Restoring overwrites current data. Download a backup first!</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px">📊 Export CSV</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Export your food log history as a spreadsheet-compatible CSV file.</div>
+          <div class="btn-row"><button class="btn ghost" onclick="exportData()">📁 Export all data as CSV</button></div>
         </div>
       </div>
     </div><!-- /settings -->
