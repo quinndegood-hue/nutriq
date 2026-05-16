@@ -1194,27 +1194,32 @@ const RESTS = {
   ],
 };
 
+const RESTS_KEYS = Object.keys(RESTS);
+
 function renderRestaurants(q) {
   q = q || '';
   const el = document.getElementById('rest-list'); if (!el) return;
-  const allKeys = Object.keys(RESTS);
-  const keys = allKeys.filter(k => k.toLowerCase().includes(q.toLowerCase()));
+  const keys = RESTS_KEYS.filter(k => k.toLowerCase().includes(q.toLowerCase()));
   el.innerHTML = keys.map(k => {
-    const idx = allKeys.indexOf(k);
-    return '<div class="card" style="cursor:pointer;margin-bottom:8px;padding:14px" onclick="showMenu(' + idx + ')">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+    const idx = RESTS_KEYS.indexOf(k);
+    return '<div class="card" data-ridx="' + idx + '" style="cursor:pointer;margin-bottom:8px;padding:14px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;pointer-events:none">' +
       '<div style="font-size:15px;font-weight:700">' + esc(k) + '</div>' +
       '<div style="font-size:12px;color:var(--text3)">' + RESTS[k].length + ' items →</div>' +
       '</div></div>';
   }).join('');
+  el.onclick = e => {
+    const card = e.target.closest('[data-ridx]');
+    if (card) showRestMenu(parseInt(card.dataset.ridx));
+  };
   const rm = document.getElementById('rest-menu');
   if (rm) rm.style.display = 'none';
 }
 
 function searchRest(q) { renderRestaurants(q); }
 
-function showMenu(idx) {
-  const name = Object.keys(RESTS)[idx];
+function showRestMenu(idx) {
+  const name = RESTS_KEYS[idx];
   const items = RESTS[name]; if (!items) return;
   const el = document.getElementById('rest-menu');
   if (!el) return;
@@ -1223,20 +1228,25 @@ function showMenu(idx) {
     '<div class="card">' +
     '<div class="card-hd">' +
     '<div class="card-title">🍔 ' + esc(name) + '</div>' +
-    '<button class="btn sm ghost" onclick="document.getElementById(\'rest-menu\').style.display=\'none\'">← Back</button>' +
+    '<button class="btn sm ghost" id="rest-back-btn">← Back</button>' +
     '</div>' +
     items.map((it, i) =>
       '<div class="rest-item">' +
       '<div><div class="rest-name">' + esc(it.name) + '</div>' +
       '<div class="rest-macros">' + it.cal + ' kcal · ' + it.pro + 'g pro · ' + it.carb + 'g carbs · ' + it.fat + 'g fat</div></div>' +
-      '<button class="btn g sm" onclick="addRestItem(' + idx + ',' + i + ')">+ Add</button>' +
+      '<button class="btn g sm" data-ridx="' + idx + '" data-iidx="' + i + '">+ Add</button>' +
       '</div>'
     ).join('') +
     '</div>';
+  document.getElementById('rest-back-btn').onclick = () => { el.style.display = 'none'; };
+  el.onclick = e => {
+    const btn = e.target.closest('[data-iidx]');
+    if (btn) addRestItem(parseInt(btn.dataset.ridx), parseInt(btn.dataset.iidx));
+  };
 }
 
 function addRestItem(restIdx, itemIdx) {
-  const name = Object.keys(RESTS)[restIdx];
+  const name = RESTS_KEYS[restIdx];
   const it = RESTS[name][itemIdx];
   addFood({ name: it.name+' ('+name+')', cal:it.cal, pro:it.pro, carb:it.carb, fat:it.fat, meal:'Lunch' });
   toast('✅ ' + it.name + ' added!');
